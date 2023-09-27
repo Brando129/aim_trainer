@@ -11,10 +11,14 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Aim Trainer")
 
 BG_COLOR = (0, 25, 40)
+LIVES = 3
+TOP_BAR_HEIGHT = 50
 
 TARGET_INCREMENT = 400
 TARGET_EVENT =  pygame.USEREVENT
 TARGET_PADDING = 30
+
+LABEL_FONT = pygame.font.SysFont("comicsans", 26)
 
 # Classes
 # Target class
@@ -59,7 +63,32 @@ def draw(win, targets):
     for target in targets:
         target.draw(win)
 
-    pygame.display.update()
+    # pygame.display.update()
+
+# Converts time to minutes, seconds and milliseconds
+def format_time(secs):
+    milli = math.floor(int(secs * 1000 % 1000) / 100)
+    seconds = int(round(secs % 60, 1))
+    minutes = int(secs // 60)
+
+    return f"{minutes:02d}:{seconds:02d}.{milli}"
+
+# Game analytics bar
+def draw_top_bar(win, elapsed_time, targets_pressed, misses):
+    pygame.draw.rect(win, "gray", (0, 0, WIDTH, TOP_BAR_HEIGHT))
+    time_label = LABEL_FONT.render(f"{format_time(elapsed_time)}", 1, "black")
+
+    speed = round(targets_pressed / elapsed_time, 1)
+    speed_label = LABEL_FONT.render(f"Speed: {speed} t/s", 1, "black")
+
+    hits_label = LABEL_FONT.render(f"Hits: {targets_pressed}", 1, "black")
+
+    lives_label = LABEL_FONT.render(f"Lives: {LIVES - misses}", 1, "black")
+
+    win.blit(time_label, (5, 5))
+    win.blit(speed_label, (200, 5))
+    win.blit(hits_label, (450, 5))
+    win.blit(lives_label, (650, 5))
 
 # Main game loop
 def main():
@@ -67,7 +96,7 @@ def main():
     targets = []
     clock = pygame.time.Clock()
 
-    target_pressed = 0
+    targets_pressed = 0
     clicks = 0
     misses = 0
     start_time = time.time()
@@ -79,6 +108,7 @@ def main():
         clock.tick(60)
         click = False
         mouse_pos = pygame.mouse.get_pos()
+        elapsed_time = time.time() - start_time
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -87,7 +117,7 @@ def main():
 
             if event.type == TARGET_EVENT:
                 x = random.randint(TARGET_PADDING, WIDTH - TARGET_PADDING)
-                y = random.randint(TARGET_PADDING, HEIGHT - TARGET_PADDING)
+                y = random.randint(TARGET_PADDING + TOP_BAR_HEIGHT, HEIGHT - TARGET_PADDING)
                 target = Target(x, y)
                 targets.append(target)
 
@@ -99,14 +129,19 @@ def main():
             target.update()
 
             if target.size <= 0:
-                targets.remove(targets)
+                targets.remove(target)
                 misses += 1
 
             if click and target.collide(*mouse_pos):
                 targets.remove(target)
-                target_pressed += 1
+                targets_pressed += 1
+
+        if misses >= LIVES:
+            pass # end the game
 
         draw(WIN, targets)
+        draw_top_bar(WIN, elapsed_time, targets_pressed, misses)
+        pygame.display.update()
 
     pygame.quit()
 
